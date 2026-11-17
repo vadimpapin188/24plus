@@ -1,0 +1,838 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Новости ТВ</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #071321;
+    color: white;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+}
+
+.broadcast {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    height: 62px;
+    flex-shrink: 0;
+    background: #0b1e33;
+    border-bottom: 2px solid #e8bd59;
+    padding: 0 4%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo {
+    font-size: 23px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.logo span {
+    color: #e8bd59;
+}
+
+.live {
+    color: #ff5555;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.clock {
+    font-size: 21px;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+}
+
+.program {
+    background: #102c4c;
+    padding: 12px 4%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    flex-shrink: 0;
+}
+
+.program-name {
+    font-size: 19px;
+    font-weight: bold;
+}
+
+.program-desc {
+    font-size: 12px;
+    color: #c5d5e5;
+    margin-top: 4px;
+}
+
+.program-next {
+    text-align: right;
+    font-size: 11px;
+    color: #c5d5e5;
+}
+
+.stage {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at center, #193b5c, #071321 75%);
+}
+
+.card {
+    position: absolute;
+    width: 65%;
+    min-height: 220px;
+    top: 50%;
+    left: 50%;
+    padding: 27px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #173b5d, #10243a);
+    border-left: 5px solid #e8bd59;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    transition: .6s ease;
+}
+
+.card.active {
+    transform: translate(-50%, -50%);
+    opacity: 1;
+    z-index: 3;
+}
+
+.card.previous {
+    transform: translate(-145%, -50%) scale(.85);
+    opacity: .2;
+    filter: blur(2px);
+}
+
+.card.next {
+    transform: translate(45%, -50%) scale(.85);
+    opacity: .2;
+    filter: blur(2px);
+}
+
+.label {
+    color: #e8bd59;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.card h2 {
+    font-size: 25px;
+    line-height: 1.3;
+    margin: 13px 0;
+}
+
+.card p {
+    color: #d4e0ec;
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.ticker {
+    height: 42px;
+    flex-shrink: 0;
+    display: flex;
+    background: #102c4c;
+    align-items: center;
+    overflow: hidden;
+}
+
+.ticker-label {
+    height: 100%;
+    background: #c52c35;
+    display: flex;
+    align-items: center;
+    padding: 0 17px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.ticker-window {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.ticker-text {
+    display: inline-block;
+    padding-left: 100%;
+    animation: ticker 65s linear infinite;
+    font-size: 13px;
+}
+
+@keyframes ticker {
+    from { transform: translateX(0); }
+    to { transform: translateX(-100%); }
+}
+
+footer {
+    background: #091827;
+    padding: 11px 4%;
+    display: flex;
+    justify-content: space-between;
+    color: #a9bed2;
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.status {
+    color: #70d69b;
+}
+
+@media(max-width: 600px) {
+    header {
+        padding: 0 12px;
+    }
+
+    .logo {
+        font-size: 16px;
+    }
+
+    .clock {
+        font-size: 16px;
+    }
+
+    .card {
+        width: 82%;
+        padding: 20px;
+    }
+
+    .card h2 {
+        font-size: 20px;
+    }
+
+    .card p {
+        font-size: 13px;
+    }
+
+    .program {
+        padding: 10px 12px;
+    }
+
+    .program-name {
+        font-size: 15px;
+    }
+
+    .program-next {
+        font-size: 9px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="broadcast">
+
+<header>
+    <div class="logo">НОВОСТИ <span>ТВ</span></div>
+    <div class="live">● ПРЯМОЙ ЭФИР</div>
+    <div class="clock" id="clock">00:00:00</div>
+</header>
+
+<section class="program">
+    <div>
+        <div class="program-name" id="programName">
+            Загрузка эфира
+        </div>
+        <div class="program-desc" id="programDesc">
+            Международный информационный телеканал
+        </div>
+    </div>
+
+    <div class="program-next" id="programNext">
+        Автоматическое расписание
+    </div>
+</section>
+
+<main class="stage" id="stage">
+    <div style="text-align:center;padding-top:100px">
+        Подключение к эфиру...
+    </div>
+</main>
+
+<div class="ticker">
+    <div class="ticker-label">В ЭФИРЕ</div>
+    <div class="ticker-window">
+        <div class="ticker-text" id="tickerText">
+            Загрузка...
+        </div>
+    </div>
+</div>
+
+<footer>
+    <div>СМИ · ТЕЛЕКАНАЛ «НОВОСТИ ТВ»</div>
+    <div class="status" id="status">● Подключение</div>
+</footer>
+
+</div>
+
+<script>
+
+/* =================================
+   GOOGLE NEWS — ГЛАВНАЯ ЛЕНТА
+================================= */
+
+const RSS_URL =
+    "https://news.google.com/rss?hl=ru&gl=RU&ceid=RU:ru";
+
+const API_URL =
+    "https://api.rss2json.com/v1/api.json?rss_url=" +
+    encodeURIComponent(RSS_URL);
+
+let news = [];
+
+let currentProgram = null;
+let currentProgramKey = "";
+
+let usedThisProgram = new Set();
+
+let programTimer = null;
+let introTimer = null;
+let storyTimer = null;
+
+let programQueue = [];
+let queueIndex = 0;
+
+/* =================================
+   ТЕМАТИЧЕСКИЕ ПРОГРАММЫ
+================================= */
+
+const PROGRAMS = [
+    {
+        name: "Короткие новости",
+        desc: "Главные события международной повестки",
+        type: "news"
+    },
+    {
+        name: "Технологии",
+        desc: "Цифровой мир и новые разработки",
+        type: "tech"
+    },
+    {
+        name: "Мир за минуту",
+        desc: "Короткий обзор событий планеты",
+        type: "general"
+    },
+    {
+        name: "Экономика",
+        desc: "Финансы и мировые рынки",
+        type: "economy"
+    },
+    {
+        name: "Наука",
+        desc: "Открытия и исследования",
+        type: "science"
+    },
+    {
+        name: "Короткие новости",
+        desc: "Международная информационная сводка",
+        type: "news"
+    },
+    {
+        name: "Спорт",
+        desc: "Спортивный мир",
+        type: "sport"
+    },
+    {
+        name: "Общество",
+        desc: "Люди и события",
+        type: "society"
+    },
+    {
+        name: "Обзор прессы",
+        desc: "Интересные публикации и главные темы",
+        type: "general"
+    },
+    {
+        name: "Мировая экономика",
+        desc: "Бизнес, торговля и финансы",
+        type: "economy"
+    }
+];
+
+/* =================================
+   ФИЛЬТРЫ НОВОСТЕЙ
+================================= */
+
+const FILTERS = {
+    news: null,
+    general: null,
+
+    tech: /технолог|компьютер|интернет|цифров|искусственн|робот|смартфон|программ|google|apple|microsoft|ai\b/i,
+
+    economy: /экономик|финанс|банк|рынок|валют|бизнес|компани|торгов|инвестиц|нефть|цены|инфляц/i,
+
+    science: /наук|исследован|учён|учен|открыти|космос|астроном|медицин|эксперимент/i,
+
+    sport: /спорт|футбол|баскетбол|теннис|олимпи|чемпионат|матч|турнир|команд/i,
+
+    society: /общество|образован|школ|университет|город|люди|социальн|населени|семья/i
+};
+
+/* =================================
+   РАСПИСАНИЕ 24/7
+================================= */
+
+// Каждые 5 минут начинается новая программа.
+// Каждый шестой слот — новостной выпуск.
+// Остальные слоты распределяются между шоу.
+
+function getProgram() {
+    const now = new Date();
+
+    const slot = Math.floor(
+        (now.getHours() * 60 + now.getMinutes()) / 5
+    );
+
+    const daySeed =
+        now.getFullYear() * 1000 +
+        Math.floor(
+            (new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate()
+            ) - new Date(now.getFullYear(), 0, 0)) / 86400000
+        );
+
+    let program;
+
+    if (slot % 6 === 0) {
+        program = PROGRAMS[0];
+    } else {
+        const shows = PROGRAMS.filter(
+            item => item.type !== "news"
+        );
+
+        const index = Math.abs(
+            (slot * 17 + daySeed * 13 + now.getDay() * 7) %
+            shows.length
+        );
+
+        program = shows[index];
+    }
+
+    return {
+        ...program,
+        key: now.toDateString() + "-" + slot,
+        slot
+    };
+}
+
+/* =================================
+   СЛЕДУЮЩАЯ ПРОГРАММА
+================================= */
+
+function getNextTime() {
+    const now = new Date();
+    const next = new Date(now);
+
+    next.setMinutes(
+        (Math.floor(now.getMinutes() / 5) + 1) * 5,
+        0,
+        0
+    );
+
+    return next;
+}
+
+function updateProgram() {
+    const program = getProgram();
+
+    document.getElementById("programName").textContent =
+        program.name;
+
+    document.getElementById("programDesc").textContent =
+        program.desc;
+
+    document.getElementById("programNext").textContent =
+        "Далее: " +
+        getNextTime().toLocaleTimeString("ru-RU", {
+            hour: "2-digit",
+            minute: "2-digit"
+        });
+
+    if (program.key !== currentProgramKey) {
+        currentProgramKey = program.key;
+        currentProgram = program;
+
+        usedThisProgram = new Set();
+
+        clearTimeout(programTimer);
+        clearTimeout(introTimer);
+        clearTimeout(storyTimer);
+
+        showIntro(program);
+
+        introTimer = setTimeout(() => {
+            startProgram();
+        }, 5000);
+    }
+}
+
+/* =================================
+   ЗАГРУЗКА GOOGLE NEWS
+================================= */
+
+async function loadNews() {
+    try {
+        const response = await fetch(API_URL);
+
+        if (!response.ok) {
+            throw new Error("Ошибка соединения");
+        }
+
+        const data = await response.json();
+
+        if (data.status !== "ok") {
+            throw new Error("RSS недоступен");
+        }
+
+        const freshNews = data.items.map(item => {
+            const parser = new DOMParser();
+
+            const doc = parser.parseFromString(
+                item.description || "",
+                "text/html"
+            );
+
+            return {
+                id: item.guid || item.link || item.title,
+
+                title: item.title || "Без заголовка",
+
+                description:
+                    (doc.body.textContent || "")
+                    .trim()
+                    .slice(0, 450),
+
+                link: item.link || "",
+
+                date: item.pubDate || ""
+            };
+        });
+
+        news = freshNews;
+
+        document.getElementById("status").textContent =
+            "● Google News подключён";
+
+        updateTicker();
+
+    } catch (error) {
+        document.getElementById("status").textContent =
+            "● Ошибка загрузки Google News";
+
+        if (!news.length) {
+            showMessage(
+                "Нет подключения",
+                "Не удалось загрузить главную ленту Google News."
+            );
+        }
+    }
+}
+
+/* =================================
+   ИСТОРИЯ ПОКАЗОВ
+================================= */
+
+const HISTORY_KEY = "novosti_tv_history_v4";
+
+function getHistory() {
+    try {
+        return JSON.parse(
+            localStorage.getItem(HISTORY_KEY) || "{}"
+        );
+    } catch {
+        return {};
+    }
+}
+
+function saveHistory(history) {
+    try {
+        localStorage.setItem(
+            HISTORY_KEY,
+            JSON.stringify(history)
+        );
+    } catch {}
+}
+
+function chooseStory(type) {
+    if (!news.length) return null;
+
+    const filter = FILTERS[type];
+
+    let candidates = filter
+        ? news.filter(item =>
+            filter.test(item.title + " " + item.description)
+        )
+        : news.slice();
+
+    // Не подменяем тематическую передачу
+    // случайными новостями из других рубрик.
+    if (!candidates.length) {
+        return null;
+    }
+
+    const history = getHistory();
+    const now = Date.now();
+    const sixHours = 6 * 60 * 60 * 1000;
+
+    // Удаляем старые записи.
+    for (const id in history) {
+        if (now - history[id] > 7 * 86400000) {
+            delete history[id];
+        }
+    }
+
+    const available = candidates.filter(item =>
+        !usedThisProgram.has(item.id) &&
+        (!history[item.id] ||
+        now - history[item.id] > sixHours)
+    );
+
+    if (!available.length) {
+        saveHistory(history);
+        return null;
+    }
+
+    // Берём самую свежую доступную публикацию.
+    const selected = available[0];
+
+    usedThisProgram.add(selected.id);
+    history[selected.id] = now;
+
+    saveHistory(history);
+
+    return selected;
+}
+
+/* =================================
+   ЭКРАНЫ
+================================= */
+
+function showMessage(titleText, descriptionText) {
+    const stage = document.getElementById("stage");
+
+    stage.innerHTML = "";
+
+    const card = document.createElement("div");
+    card.className = "card active";
+
+    const label = document.createElement("div");
+    label.className = "label";
+    label.textContent = "НОВОСТИ ТВ";
+
+    const title = document.createElement("h2");
+    title.textContent = titleText;
+
+    const description = document.createElement("p");
+    description.textContent = descriptionText;
+
+    card.append(label, title, description);
+
+    stage.appendChild(card);
+}
+
+function showIntro(program) {
+    showMessage(
+        program.name,
+        program.desc
+    );
+}
+
+function showStory(story) {
+    const stage = document.getElementById("stage");
+
+    stage.innerHTML = "";
+
+    const card = document.createElement("div");
+    card.className = "card active";
+
+    const label = document.createElement("div");
+    label.className = "label";
+
+    label.textContent =
+        currentProgram.name.toUpperCase();
+
+    const title = document.createElement("h2");
+    title.textContent = story.title;
+
+    const description = document.createElement("p");
+
+    description.textContent =
+        story.description || "Подробности в публикации.";
+
+    card.append(label, title, description);
+
+    stage.appendChild(card);
+}
+
+/* =================================
+   ФОРМИРОВАНИЕ ВЫПУСКА
+================================= */
+
+function buildQueue() {
+    const isNews = currentProgram.type === "news";
+
+    const maxStories = isNews ? 5 : 3;
+
+    const queue = [];
+
+    for (let i = 0; i < maxStories; i++) {
+        const story = chooseStory(currentProgram.type);
+
+        if (!story) break;
+
+        queue.push(story);
+    }
+
+    return queue;
+}
+
+/* =================================
+   ПРОИГРЫВАНИЕ ПРОГРАММЫ
+================================= */
+
+function startProgram() {
+    if (!currentProgram) return;
+
+    clearTimeout(storyTimer);
+
+    programQueue = buildQueue();
+    queueIndex = 0;
+
+    if (!programQueue.length) {
+        showMessage(
+            currentProgram.name,
+            "Свежих материалов для этой программы пока нет. Следующий выпуск скоро начнётся."
+        );
+        return;
+    }
+
+    playNextStory();
+}
+
+function playNextStory() {
+    if (queueIndex >= programQueue.length) {
+        showMessage(
+            "Выпуск завершён",
+            "Спасибо за просмотр! Следующая программа начнётся по расписанию."
+        );
+
+        return;
+    }
+
+    const story = programQueue[queueIndex++];
+
+    showStory(story);
+
+    const duration =
+        currentProgram.type === "news"
+            ? 12000
+            : 20000;
+
+    storyTimer = setTimeout(
+        playNextStory,
+        duration
+    );
+}
+
+/* =================================
+   БЕГУЩАЯ СТРОКА
+================================= */
+
+function updateTicker() {
+    const headlines = news
+        .slice(0, 25)
+        .map(item => item.title);
+
+    const ticker = document.getElementById("tickerText");
+
+    if (!headlines.length) {
+        ticker.textContent = "Ожидаем новости...";
+        return;
+    }
+
+    const text = headlines.join("     ◆     ");
+
+    ticker.textContent =
+        text + "     ◆     " + text;
+}
+
+/* =================================
+   ЧАСЫ
+================================= */
+
+function updateClock() {
+    const now = new Date();
+
+    document.getElementById("clock").textContent =
+        now.toLocaleTimeString("ru-RU", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+        });
+
+    updateProgram();
+}
+
+/* =================================
+   ЗАПУСК ТЕЛЕКАНАЛА
+================================= */
+
+updateClock();
+
+setInterval(updateClock, 1000);
+
+// Проверяем обновления Google News каждые 10 минут.
+loadNews();
+
+setInterval(loadNews, 10 * 60 * 1000);
+
+// Время до следующего пятиминутного слота.
+function scheduleNextProgramCheck() {
+    const now = new Date();
+
+    const next = new Date(now);
+
+    next.setMinutes(
+        (Math.floor(now.getMinutes() / 5) + 1) * 5,
+        0,
+        0
+    );
+
+    const delay = next.getTime() - now.getTime();
+
+    programTimer = setTimeout(() => {
+        updateClock();
+        scheduleNextProgramCheck();
+    }, delay);
+}
+
+scheduleNextProgramCheck();
+
+</script>
+
+</body>
+</html>

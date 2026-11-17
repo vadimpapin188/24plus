@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#071426">
+<title>24 Плюс — Телевидение Евразии</title>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<style>
+:root {
+    --bg: #071426;
+    --panel: #10233d;
+    --panel2: #173451;
+    --gold: #e8bd59;
+    --white: #f5f7fb;
+    --muted: #a9b8ca;
+}
+* { box-sizing: border-box; }
+html, body {
+    margin: 0; width: 100%; height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--white);
+    font-family: Arial, Helvetica, sans-serif;
+}
+body {
+    background: radial-gradient(ellipse at 50% -20%, #1b3d61 0, transparent 55%), var(--bg);
+}
+
+/* Заставка */
+#splash {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #061326;
+    animation: splashOut .65s ease 2.35s forwards;
+}
+.splash-inner { text-align: center; animation: splashIn .6s ease both; }
+.splash-logo {
+    width: 82px; height: 82px; margin: 0 auto 24px;
+    border-radius: 22px; background: var(--gold); color: #071426;
+    display: grid; place-items: center; font-size: 35px; font-weight: 900;
+    box-shadow: 0 0 55px #e8bd5940;
+}
+.splash-title { font-size: clamp(23px, 5vw, 42px); font-weight: 800; }
+.splash-sub {
+    margin-top: 10px; color: var(--muted); font-size: 13px;
+    letter-spacing: 2px; text-transform: uppercase;
+}
+@keyframes splashIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: none; }
+}
+@keyframes splashOut {
+    to { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+
+/* Главный экран */
+#app {
+    height: 100%; display: flex; flex-direction: column;
+    opacity: 0; animation: appIn .6s ease 2.55s forwards;
+}
+@keyframes appIn { to { opacity: 1; } }
+header {
+    height: 86px; flex: none; display: flex; align-items: center; gap: 14px;
+    padding: 0 clamp(18px, 4vw, 54px);
+    border-bottom: 1px solid #ffffff16; background: #061326b8;
+}
+.brandmark {
+    width: 48px; height: 48px; border-radius: 13px;
+    background: var(--gold); color: #071426;
+    display: grid; place-items: center; font-weight: 900; font-size: 20px;
+}
+.brand-title { font-size: clamp(18px, 3vw, 25px); font-weight: 800; }
+.brand-sub { font-size: 11px; color: var(--muted); margin-top: 4px; letter-spacing: 1.1px; }
+.top-right { margin-left: auto; color: var(--muted); font-size: 12px; letter-spacing: 1px; }
+main {
+    flex: 1; min-height: 0; overflow: auto;
+    padding: clamp(24px, 5vh, 54px) clamp(18px, 5vw, 64px);
+}
+.section-label { font-size: 11px; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; font-weight: 800; }
+h1 { font-size: clamp(25px, 4vw, 38px); margin: 10px 0 8px; }
+.description { color: var(--muted); margin: 0 0 30px; font-size: 14px; }
+.channels { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 230px)); gap: 18px; }
+.tile {
+    appearance: none; border: 1px solid #ffffff18;
+    background: linear-gradient(145deg, #173451, #0d2038);
+    color: var(--white); border-radius: 18px; padding: 18px;
+    text-align: left; cursor: pointer; min-height: 205px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    transition: transform .16s, border-color .16s, box-shadow .16s; outline: none;
+}
+.tile:hover, .tile:focus-visible, .tile.selected {
+    transform: translateY(-3px); border-color: var(--gold);
+    box-shadow: 0 0 0 2px #e8bd5930, 0 16px 34px #0005;
+}
+.channel-logo {
+    width: 76px; height: 76px; border-radius: 20px;
+    display: grid; place-items: center;
+    background: linear-gradient(145deg, #f3f5f8, #b8c7d8);
+    color: #16304a; font-weight: 900; font-size: 25px; letter-spacing: -1px;
+    box-shadow: inset 0 1px 0 #fff;
+}
+.tile-bottom { display: flex; align-items: end; justify-content: space-between; gap: 10px; }
+.tile-name { font-size: 17px; font-weight: 800; }
+.tile-type { font-size: 11px; color: var(--muted); margin-top: 5px; }
+.tile-arrow { font-size: 24px; color: var(--gold); }
+.help { margin-top: 28px; color: #91a4ba; font-size: 12px; line-height: 1.6; }
+footer {
+    flex: none; padding: 12px 22px; text-align: center;
+    color: #71869f; font-size: 10px; border-top: 1px solid #ffffff12;
+}
+
+/* Видеоплеер */
+#viewer { position: fixed; inset: 0; z-index: 10; background: #02060c; display: none; }
+#viewer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    background: #02060c;
+    display: none;
+}
+
+#viewer.open {
+    display: block;
+}
+
+#stream, #hlsStream {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+    background: #02060c;
+}
+
+#hlsStream {
+    object-fit: contain;
+}
+
+/* Верхняя панель управления */
+.viewer-top {
+    position: absolute; top: 0; left: 0; right: 0; min-height: 70px;
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+    background: linear-gradient(#000d, #0005, transparent); z-index: 12;
+}
+.viewer-channel {
+    color: white; font-weight: 700; text-shadow: 0 1px 5px #000;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.player-button {
+    border: 1px solid #ffffff55; background: rgba(7, 20, 38, .9);
+    color: white; border-radius: 10px; padding: 11px 15px;
+    cursor: pointer; font-size: 15px; font-weight: 700;
+}
+.player-button:hover, .player-button:focus-visible {
+    background: #304b68; border-color: var(--gold); outline: none;
+}
+.viewer-spacer { flex: 1; }
+
+/* Нижняя панель управления */
+.viewer-bottom {
+    position: absolute; left: 0; right: 0; bottom: 0; min-height: 76px;
+    padding: 12px 16px; display: flex; justify-content: center;
+    align-items: center; gap: 14px; z-index: 12;
+    background: linear-gradient(transparent, #000c);
+}
+.viewer-bottom .player-button { min-width: 125px; }
+
+/* Уведомление */
+#toast {
+    position: fixed; z-index: 40; right: 24px; top: 50%;
+    transform: translate(20px, -50%); opacity: 0; pointer-events: none;
+    background: #10233dee; border: 1px solid #e8bd5966;
+    border-radius: 15px; padding: 17px 20px; min-width: 205px;
+    box-shadow: 0 15px 40px #0008; transition: opacity .22s, transform .22s;
+}
+#toast.show { opacity: 1; transform: translate(0, -50%); }
+#toast small {
+    display: block; color: var(--gold); font-size: 10px;
+    letter-spacing: 1.5px; margin-bottom: 7px;
+}
+#toast strong { font-size: 17px; }
+
+/* Мобильная версия */
+@media(max-width: 600px) {
+    header { height: 72px; }
+    .top-right { display: none; }
+    .channels { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .tile { min-height: 170px; padding: 14px; }
+    .channel-logo { width: 62px; height: 62px; font-size: 21px; }
+    .tile-name { font-size: 14px; }
+    main { padding-top: 26px; }
+    .viewer-top { padding: 8px; gap: 7px; }
+    .player-button { padding: 10px; font-size: 13px; }
+    .viewer-bottom { gap: 8px; padding: 8px; }
+    .viewer-bottom .player-button { min-width: 0; flex: 1; }
+    #toast { right: 12px; min-width: 170px; }
+}
+@media(orientation: landscape) and (max-height: 500px) {
+    header { height: 60px; }
+    .brandmark { width: 38px; height: 38px; }
+    .tile { min-height: 145px; }
+    .channel-logo { width: 54px; height: 54px; }
+    .viewer-bottom { min-height: 60px; }
+}
+</style>
+</head>
+
+<body>
+<!-- Заставка -->
+<div id="splash" aria-label="Заставка 24 Плюс">
+    <div class="splash-inner">
+        <div class="splash-logo">24+</div>
+        <div class="splash-title">24 Плюс — Телевидение Евразии</div>
+        <div class="splash-sub">Телевидение начинается здесь</div>
+    </div>
+</div>
+
+<!-- Главная страница -->
+<div id="app">
+    <header>
+        <div class="brandmark">24+</div>
+        <div>
+            <div class="brand-title">24 Плюс — Телевидение Евразии</div>
+            <div class="brand-sub">ТЕЛЕВИЗИОННАЯ ПЛАТФОРМА</div>
+        </div>
+        <div class="top-right">ВЫБЕРИТЕ КАНАЛ</div>
+    </header>
+
+    <main>
+        <div class="section-label">ТЕЛЕКАНАЛЫ</div>
+        <h1>Смотрите эфир</h1>
+        <p class="description">Выберите канал с помощью мыши, сенсорного экрана или пульта.</p>
+        <div class="channels" id="channels"></div>
+        <div class="help">
+            Управление: ↑ / ↓ или CH+ / CH− — переключение каналов.
+            Enter — открыть. Esc / Backspace — назад.
+            На сенсорном экране можно использовать кнопки переключения.
+        </div>
+    </main>
+
+    <footer>© 2026 24 Плюс — Телевидение Евразии</footer>
+</div>
+
+<!-- Экран просмотра -->
+<div id="viewer" aria-label="Просмотр телеканала">
+    <div class="viewer-top">
+        <button class="player-button" id="backBtn" type="button">← Каналы</button>
+        <div class="viewer-channel" id="viewerChannelName">Канал</div>
+        <div class="viewer-spacer"></div>
+        <button class="player-button" id="topPrev" type="button">◀</button>
+        <button class="player-button" id="topNext" type="button">▶</button>
+    </div>
+
+    <iframe
+        id="stream"
+        src="about:blank"
+        title="Прямой эфир"
+        allow="autoplay; fullscreen; picture-in-picture"
+        allowfullscreen
+        referrerpolicy="strict-origin-when-cross-origin">
+    </iframe>
+
+    <video
+        id="hlsStream"
+        controls
+        playsinline
+        style="display:none;"
+        aria-label="HLS-плеер">
+    </video>
+
+    <div class="viewer-bottom" id="gestureControls">
+        <button class="player-button" id="prevBtn" type="button">◀ Предыдущий</button>
+        <button class="player-button" id="nextBtn" type="button">Следующий ▶</button>
+    </div>
+</div>
+
+<!-- Уведомление о канале -->
+<div id="toast" role="status" aria-live="polite">
+    <small>СЕЙЧАС ВЫБРАН</small>
+    <strong id="toastName">Канал</strong>
+</div>
+
+<script>
+(() => {
+    /* СПИСОК КАНАЛОВ */
+    const channels = [
+        {
+            name: 'Ирбис',
+            subtitle: 'Нет информации · Прямой эфир',
+            logo: 'ИРБИС',
+            type: 'iframe',
+            url: 'https://live.vkvideo.ru/app/embed/irbis_tv'
+        },
+        {
+            name: 'Euronews Русский',
+            subtitle: 'Нет информации · Прямой эфир',
+            logo: 'EN',
+            type: 'iframe',
+            url: 'https://www.youtube.com/embed/lwYzwdBiaho?feature=share&autoplay=1&mute=0'
+        },
+        {
+            name: 'Atameken Bussines',
+            subtitle: 'Нет информации · Прямой эфир',
+            logo: 'AB',
+            type: 'iframe',
+            url: 'https://www.youtube.com/embed/L__GbuZLC-g?feature=share&autoplay=1&mute=0'
+        },
+        {
+            name: 'Погодный канал Евразии',
+            subtitle: 'Погода здесь 24/7 · Прямой эфир',
+            logo: 'МКЕ',
+            type: 'iframe',
+            url: 'pke.html'
+        },
+        {
+            name: 'DW на русском',
+            subtitle: 'Эфир Detushe Welle · Прямой эфир',
+            logo: 'DW',
+            type: 'iframe',
+            url: 'https://www.youtube.com/embed/gP7872YRFDk?feature=share&autoplay=1&mute=0'
+        },
+        {
+            name: '24KZ',
+            subtitle: 'Нет информации · Прямой эфир',
+            logo: '24KZ',
+            type: 'iframe',
+            url: 'https://www.youtube.com/embed/CTfrepsqaao?feature=share&autoplay=1&mute=0'
+
+
+        },
+        {
+            name: 'Настоящее время (Белорусский канал)',
+            subtitle: 'Нет информации · Прямой эфир',
+            logo: 'НВ',
+            type: 'iframe',
+            url: 'https://www.youtube.com/embed/t9Ilev-uk4w?feature=share&autoplay=1&mute=0'
+        }
+    ];
+
+    let hlsPlayer = null;
+    let currentIndex = 0;
+    let toastTimer = null;
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    const viewer = document.getElementById('viewer');
+    const iframe = document.getElementById('stream');
+    const video = document.getElementById('hlsStream');
+    const channelList = document.getElementById('channels');
+    const toast = document.getElementById('toast');
+    const toastName = document.getElementById('toastName');
+    const viewerChannelName = document.getElementById('viewerChannelName');
+
+    /* ОСТАНОВКА HLS */
+    function stopHLS() {
+        if (hlsPlayer) {
+            hlsPlayer.destroy();
+            hlsPlayer = null;
+        }
+
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+    }
+
+    /* ЗАПУСК ИСТОЧНИКА КАНАЛА */
+    function playChannelSource(channel) {
+        stopHLS();
+        iframe.src = 'about:blank';
+
+        if (channel.type === 'hls') {
+            iframe.style.display = 'none';
+            video.style.display = 'block';
+
+            if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = channel.url;
+                video.play().catch(() => {
+                    /* Браузер может требовать нажатия Play пользователем. */
+                });
+            } else if (window.Hls && Hls.isSupported()) {
+                hlsPlayer = new Hls();
+                hlsPlayer.loadSource(channel.url);
+                hlsPlayer.attachMedia(video);
+
+                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
+                    video.play().catch(() => {
+                        /* Автовоспроизведение может быть заблокировано браузером. */
+                    });
+                });
+
+                hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        console.error('Ошибка HLS:', data);
+                        showToastMessage('Ошибка HLS-потока');
+                    }
+                });
+            } else {
+                video.style.display = 'none';
+                showToastMessage('HLS не поддерживается этим браузером');
+            }
+        } else {
+            video.style.display = 'none';
+            iframe.style.display = 'block';
+            iframe.src = channel.url;
+        }
+    }
+
+    function showToastMessage(message) {
+        toastName.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 4000);
+    }
+
+    /* СОЗДАНИЕ ПЛИТОК */
+    function renderChannels() {
+        channelList.innerHTML = '';
+
+        channels.forEach((channel, index) => {
+            const tile = document.createElement('button');
+            tile.className = 'tile';
+            tile.type = 'button';
+
+            const logo = document.createElement('div');
+            logo.className = 'channel-logo';
+            logo.textContent = channel.logo;
+
+            const bottom = document.createElement('div');
+            bottom.className = 'tile-bottom';
+
+            const info = document.createElement('div');
+            const name = document.createElement('div');
+            name.className = 'tile-name';
+            name.textContent = channel.name;
+
+            const subtitle = document.createElement('div');
+            subtitle.className = 'tile-type';
+            subtitle.textContent = channel.subtitle;
+
+            info.append(name, subtitle);
+
+            const arrow = document.createElement('div');
+            arrow.className = 'tile-arrow';
+            arrow.textContent = '›';
+
+            bottom.append(info, arrow);
+            tile.append(logo, bottom);
+
+            tile.addEventListener('click', () => {
+                currentIndex = index;
+                openChannel();
+            });
+
+            channelList.appendChild(tile);
+        });
+
+        updateSelectedTile();
+    }
+
+    /* ВЫБРАННАЯ ПЛИТКА */
+    function updateSelectedTile() {
+        const tiles = channelList.querySelectorAll('.tile');
+        tiles.forEach((tile, index) => {
+            tile.classList.toggle('selected', index === currentIndex);
+        });
+    }
+
+    /* УВЕДОМЛЕНИЕ */
+    function showToast() {
+        showToastMessage(channels[currentIndex].name);
+    }
+
+    /* ПЕРЕКЛЮЧЕНИЕ КАНАЛА */
+    function selectChannel(index) {
+        currentIndex = (index + channels.length) % channels.length;
+        updateSelectedTile();
+
+        viewerChannelName.textContent = channels[currentIndex].name;
+
+        if (viewer.classList.contains('open')) {
+            playChannelSource(channels[currentIndex]);
+        }
+
+        showToast();
+    }
+
+    function nextChannel() { selectChannel(currentIndex + 1); }
+    function previousChannel() { selectChannel(currentIndex - 1); }
+
+    /* ОТКРЫТИЕ КАНАЛА */
+    function openChannel() {
+        viewer.classList.add('open');
+        viewerChannelName.textContent = channels[currentIndex].name;
+        playChannelSource(channels[currentIndex]);
+        updateSelectedTile();
+        showToast();
+
+        document.getElementById('backBtn').focus();
+
+    }
+
+    /* ВОЗВРАТ К СПИСКУ */
+    function closeChannel() {
+        viewer.classList.remove('open');
+        stopHLS();
+        iframe.src = 'about:blank';
+        video.style.display = 'none';
+        iframe.style.display = 'block';
+        toast.classList.remove('show');
+
+        const tiles = channelList.querySelectorAll('.tile');
+        if (tiles[currentIndex]) {
+            tiles[currentIndex].focus();
+        }
+    }
+
+    /* КНОПКИ */
+    document.getElementById('backBtn').addEventListener('click', closeChannel);
+    document.getElementById('topPrev').addEventListener('click', previousChannel);
+    document.getElementById('topNext').addEventListener('click', nextChannel);
+    document.getElementById('prevBtn').addEventListener('click', previousChannel);
+    document.getElementById('nextBtn').addEventListener('click', nextChannel);
+
+    /* КЛАВИАТУРА И ПУЛЬТ */
+    function isChannelUp(e) {
+        return e.key === 'ChannelUp' ||
+            e.key === 'MediaTrackNext' ||
+            e.keyCode === 166 ||
+            e.keyCode === 427 ||
+            e.key === 'PageUp';
+    }
+
+    function isChannelDown(e) {
+        return e.key === 'ChannelDown' ||
+            e.key === 'MediaTrackPrevious' ||
+            e.keyCode === 167 ||
+            e.keyCode === 428 ||
+            e.key === 'PageDown';
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'BrowserBack') {
+            if (viewer.classList.contains('open')) {
+                e.preventDefault();
+                closeChannel();
+            }
+            return;
+        }
+
+        if (viewer.classList.contains('open')) {
+            if (e.key === 'ArrowUp' || isChannelUp(e)) {
+                e.preventDefault();
+                nextChannel();
+                return;
+            }
+            if (e.key === 'ArrowDown' || isChannelDown(e)) {
+                e.preventDefault();
+                previousChannel();
+                return;
+            }
+        } else {
+            if (isChannelUp(e) || e.key === 'ArrowDown') {
+                e.preventDefault();
+                currentIndex = (currentIndex + 1) % channels.length;
+                updateSelectedTile();
+                return;
+            }
+            if (isChannelDown(e) || e.key === 'ArrowUp') {
+                e.preventDefault();
+                currentIndex = (currentIndex - 1 + channels.length) % channels.length;
+                updateSelectedTile();
+                return;
+            }
+            if (e.key === 'Enter' || e.key === ' ') {
+                const tiles = channelList.querySelectorAll('.tile');
+                if (tiles[currentIndex]) {
+                    e.preventDefault();
+                    openChannel();
+                }
+            }
+        }
+    }, true);
+
+    /* СВАЙПЫ ПО ПАНЕЛИ УПРАВЛЕНИЯ */
+    const gestureControls = document.getElementById('gestureControls');
+
+    gestureControls.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    gestureControls.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].screenX - touchStartX;
+        const dy = e.changedTouches[0].screenY - touchStartY;
+
+        if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {
+            if (dx < 0) nextChannel();
+            else previousChannel();
+        }
+    }, { passive: true });
+
+    /* СВАЙПЫ НА ГЛАВНОМ ЭКРАНЕ */
+    channelList.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    channelList.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].screenX - touchStartX;
+        const dy = e.changedTouches[0].screenY - touchStartY;
+
+        if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {
+            if (dx < 0) currentIndex = (currentIndex + 1) % channels.length;
+            else currentIndex = (currentIndex - 1 + channels.length) % channels.length;
+            updateSelectedTile();
+        }
+    }, { passive: true });
+
+    /* ЗАПУСК */
+    renderChannels();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Главные новости — Google News RSS</title>
+    <!-- Подключение Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Подключение шрифта Inter и FontAwesome для иконок -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #090d16;
+            color: #f8fafc;
+            overflow: hidden; /* Запрет стандартного скролла для полноэкранного слайдера */
+        }
+
+        /* Плавные анимации для карточек вертикального слайдера */
+        .slide-card {
+            transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.65s ease;
+            will-change: transform, opacity;
+        }
+
+        /* Состояния карточек */
+        .slide-active {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+            z-index: 20;
+            pointer-events: auto;
+        }
+
+        .slide-prev {
+            transform: translateY(-105%) scale(0.94);
+            opacity: 0;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .slide-next {
+            transform: translateY(105%) scale(0.94);
+            opacity: 0;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .slide-hidden {
+            transform: translateY(120%) scale(0.9);
+            opacity: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Фоновые декоративные градиенты */
+        .ambient-glow {
+            background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.14) 0%, rgba(16, 185, 129, 0.06) 45%, rgba(9, 13, 22, 0) 75%);
+        }
+
+        /* Кастомный скроллбар для длинных заголовков на маленьких экранах */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between relative select-none">
+
+    <!-- Фоновое свечение -->
+    <div class="ambient-glow fixed inset-0 pointer-events-none z-0"></div>
+
+    <!-- Верхняя панель навигации -->
+    <header class="relative z-30 w-full max-w-5xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-2 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <i class="fa-solid fa-newspaper text-white text-lg"></i>
+            </div>
+            <div>
+                <div class="flex items-center space-x-2">
+                    <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">Главные новости</h1>
+                    <span id="live-badge" class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>
+                        RSS Прямой эфир
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400 hidden sm:block">Google News • Автоперелистывание каждые 6 сек.</p>
+            </div>
+        </div>
+
+        <!-- Правая часть шапки: счетчик и кнопка обновления -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+            <div class="bg-slate-900/80 border border-slate-800 backdrop-blur-md px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-slate-300">
+                <span id="current-index" class="text-white font-bold">0</span>
+                <span class="text-slate-500 mx-1">/</span>
+                <span id="total-count">0</span>
+            </div>
+
+            <button id="toggle-play-btn" title="Пауза / Продолжить" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center justify-center transition-all active:scale-95">
+                <i id="play-pause-icon" class="fa-solid fa-pause text-xs sm:text-sm"></i>
+            </button>
+
+            <button id="refresh-btn" title="Обновить ленту" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center justify-center transition-all active:scale-95">
+                <i id="refresh-icon" class="fa-solid fa-rotate-right text-xs sm:text-sm"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Центральная область вертикального слайдера -->
+    <main id="slider-viewport" class="relative z-20 flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 flex items-center justify-center overflow-hidden">
+        
+        <!-- Индикатор загрузки -->
+        <div id="loader" class="flex flex-col items-center justify-center text-center p-8">
+            <div class="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+            <p class="text-slate-300 font-medium text-base">Загружаем свежие новости из Google News...</p>
+            <p class="text-slate-500 text-xs mt-1">Парсинг RSS-потока</p>
+        </div>
+
+        <!-- Контейнер для карточек -->
+        <div id="cards-container" class="relative w-full h-[72vh] max-h-[540px] min-h-[380px] hidden">
+            <!-- Карточки генерируются через JS -->
+        </div>
+
+        <!-- Боковая панель навигации (Вверх / Вниз + точки) для десктопа -->
+        <div id="side-controls" class="hidden md:flex flex-col items-center space-y-3 ml-5 z-30">
+            <button id="prev-btn" aria-label="Предыдущая новость" class="w-11 h-11 rounded-2xl bg-slate-900/90 hover:bg-blue-600 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white flex items-center justify-center shadow-lg transition-all active:scale-90">
+                <i class="fa-solid fa-chevron-up"></i>
+            </button>
+            
+            <!-- Мини-индикатор прогресса по списку -->
+            <div id="dots-indicator" class="flex flex-col items-center space-y-1.5 py-2 max-h-48 overflow-hidden"></div>
+
+            <button id="next-btn" aria-label="Следующая новость" class="w-11 h-11 rounded-2xl bg-slate-900/90 hover:bg-blue-600 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white flex items-center justify-center shadow-lg transition-all active:scale-90">
+                <i class="fa-solid fa-chevron-down"></i>
+            </button>
+        </div>
+    </main>
+
+    <!-- Нижняя панель управления для мобильных устройств и подсказки -->
+    <footer class="relative z-30 w-full max-w-4xl mx-auto px-4 sm:px-6 pb-4 sm:pb-6 pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <!-- Мобильные кнопки Вверх / Вниз -->
+        <div class="flex md:hidden items-center justify-center space-x-4 w-full">
+            <button id="mobile-prev-btn" class="flex-1 py-2.5 px-4 rounded-xl bg-slate-900/90 active:bg-blue-600 border border-slate-800 text-slate-200 text-sm font-medium flex items-center justify-center space-x-2 transition-colors">
+                <i class="fa-solid fa-arrow-up text-xs"></i>
+                <span>Назад</span>
+            </button>
+            <button id="mobile-next-btn" class="flex-1 py-2.5 px-4 rounded-xl bg-slate-900/90 active:bg-blue-600 border border-slate-800 text-slate-200 text-sm font-medium flex items-center justify-center space-x-2 transition-colors">
+                <span>Вперёд</span>
+                <i class="fa-solid fa-arrow-down text-xs"></i>
+            </button>
+        </div>
+
+        <!-- Статус-бар и подсказки -->
+        <div class="w-full flex items-center justify-between text-xs text-slate-500">
+            <div id="status-message" class="truncate max-w-[65%]">
+                Источник: news.google.com/rss
+            </div>
+            <div class="hidden sm:flex items-center space-x-3">
+                <span><kbd class="px-1.5 py-0.5 bg-slate-800/80 border border-slate-700 rounded text-slate-300">↑</kbd> <kbd class="px-1.5 py-0.5 bg-slate-800/80 border border-slate-700 rounded text-slate-300">↓</kbd> или скролл</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Уведомление (Toast) вместо alert() -->
+    <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 text-xs sm:text-sm shadow-2xl opacity-0 pointer-events-none transition-opacity duration-300">
+        Сообщение
+    </div>
+
+    <script>
+        /**
+         * Конфигурация приложения
+         */
+        const RSS_TARGET_URL = 'https://news.google.com/rss?hl=ru&gl=RU&ceid=RU:ru';
+        const SLIDE_DURATION_MS = 6000; // Перелистывание каждые 6 секунд
+        const MAX_ITEMS = 25; // Максимальное количество карточек в слайдере
+
+        // Состояние приложения
+        let newsItems = [];
+        let currentIndex = 0;
+        let isPaused = false;
+        let isHovering = false;
+        let progressStartTime = null;
+        let elapsedBeforePause = 0;
+        let animationFrameId = null;
+        let wheelLock = false;
+        let touchStartY = 0;
+
+        // DOM-элементы
+        const loaderEl = document.getElementById('loader');
+        const cardsContainer = document.getElementById('cards-container');
+        const sideControls = document.getElementById('side-controls');
+        const currentIndexEl = document.getElementById('current-index');
+        const totalCountEl = document.getElementById('total-count');
+        const dotsIndicator = document.getElementById('dots-indicator');
+        const togglePlayBtn = document.getElementById('toggle-play-btn');
+        const playPauseIcon = document.getElementById('play-pause-icon');
+        const refreshBtn = document.getElementById('refresh-btn');
+        const refreshIcon = document.getElementById('refresh-icon');
+        const statusMessageEl = document.getElementById('status-message');
+        const liveBadgeEl = document.getElementById('live-badge');
+
+        /**
+         * Показ всплывающего уведомления
+         */
+        function showToast(text) {
+            const toast = document.getElementById('toast');
+            toast.textContent = text;
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 3000);
+        }
+
+        /**
+         * Форматирование относительного времени на русском языке
+         */
+        function formatRelativeTime(dateString) {
+            try {
+                const pubDate = new Date(dateString);
+                if (isNaN(pubDate.getTime())) return 'Недавно';
+
+                const now = new Date();
+                const diffSeconds = Math.floor((now - pubDate) / 1000);
+
+                if (diffSeconds < 60) return 'Только что';
+                const diffMinutes = Math.floor(diffSeconds / 60);
+                if (diffMinutes < 60) {
+                    return `${diffMinutes} ${pluralize(diffMinutes, ['минуту', 'минуты', 'минут'])} назад`;
+                }
+                const diffHours = Math.floor(diffMinutes / 60);
+                if (diffHours < 24) {
+                    return `${diffHours} ${pluralize(diffHours, ['час', 'часа', 'часов'])} назад`;
+                }
+                return pubDate.toLocaleDateString('ru-RU', {
+                    day: 'numeric',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return 'Сегодня';
+            }
+        }
+
+        /**
+         * Склонение русских слов
+         */
+        function pluralize(number, titles) {
+            const cases = [2, 0, 1, 1, 1, 2];
+            return titles[(number % 100 > 4 && number % 100 < 20) ? 2 : cases[(number % 10 < 5) ? number % 10 : 5]];
+        }
+
+        /**
+         * Очистка заголовка Google News (отделение названия источника в конце заголовка)
+         */
+        function parseTitleAndSource(rawTitle, sourceTag) {
+            let title = rawTitle || 'Без заголовка';
+            let source = sourceTag || '';
+
+            const lastDashIndex = title.lastIndexOf(' - ');
+            if (lastDashIndex !== -1) {
+                const extractedSource = title.substring(lastDashIndex + 3).trim();
+                if (!source) source = extractedSource;
+                title = title.substring(0, lastDashIndex).trim();
+            }
+
+            if (!source) source = 'Google Новости';
+            return { title, source };
+        }
+
+        /**
+         * Извлечение связанных подзаголовков из HTML-описания Google News
+         */
+        function extractRelatedArticles(descriptionHtml) {
+            if (!descriptionHtml) return [];
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(descriptionHtml, 'text/html');
+                const items = Array.from(doc.querySelectorAll('li'));
+                return items.slice(0, 2).map(li => {
+                    const linkEl = li.querySelector('a');
+                    const fontEl = li.querySelector('font');
+                    return {
+                        title: linkEl ? linkEl.textContent.trim() : li.textContent.trim(),
+                        source: fontEl ? fontEl.textContent.trim() : ''
+                    };
+                }).filter(item => item.title.length > 5);
+            } catch (e) {
+                return [];
+            }
+        }
+
+        /**
+         * Загрузка и парсинг RSS-ленты через несколько CORS-прокси с резервным режимом
+         */
+        async function fetchGoogleNewsRSS() {
+            const proxies = [
+                async () => {
+                    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(RSS_TARGET_URL)}&_=${Date.now()}`);
+                    if (!res.ok) throw new Error('AllOrigins failed');
+                    const data = await res.json();
+                    return data.contents;
+                },
+                async () => {
+                    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(RSS_TARGET_URL)}`);
+                    if (!res.ok) throw new Error('CorsProxy failed');
+                    return await res.text();
+                },
+                async () => {
+                    const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(RSS_TARGET_URL)}`);
+                    if (!res.ok) throw new Error('CodeTabs failed');
+                    return await res.text();
+                }
+            ];
+
+            for (const fetchProxy of proxies) {
+                try {
+                    const xmlText = await fetchProxy();
+                    if (!xmlText || !xmlText.includes('<item>')) continue;
+
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+                    const itemNodes = Array.from(xmlDoc.querySelectorAll('item')).slice(0, MAX_ITEMS);
+
+                    if (itemNodes.length > 0) {
+                        const parsed = itemNodes.map((node, idx) => {
+                            const rawTitle = node.querySelector('title')?.textContent || '';
+                            const link = node.querySelector('link')?.textContent || 'https://news.google.com';
+                            const pubDate = node.querySelector('pubDate')?.textContent || '';
+                            const sourceNode = node.querySelector('source');
+                            const sourceName = sourceNode ? sourceNode.textContent : '';
+                            const description = node.querySelector('description')?.textContent || '';
+
+                            const { title, source } = parseTitleAndSource(rawTitle, sourceName);
+                            const related = extractRelatedArticles(description);
+
+                            return {
+                                id: idx,
+                                title,
+                                source,
+                                link,
+                                timeAgo: formatRelativeTime(pubDate),
+                                related
+                            };
+                        });
+
+                        statusMessageEl.textContent = `Обновлено в ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} • Google News RSS`;
+                        liveBadgeEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>RSS Прямой эфир`;
+                        return parsed;
+                    }
+                } catch (err) {
+                    console.warn('Прокси не ответил, пробуем следующий...', err);
+                }
+            }
+
+            // Резервные демонстрационные новости, если все внешние CORS-прокси временно заблокированы сетью
+            statusMessageEl.textContent = 'Демо-режим (внешний RSS-прокси временно недоступен)';
+            liveBadgeEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5"></span>Демо-лента`;
+            return getFallbackNews();
+        }
+
+        /**
+         * Резервный набор новостей на случай проблем с CORS-прокси
+         */
+        function getFallbackNews() {
+            return [
+                {
+                    id: 0,
+                    title: 'Развитие технологий искусственного интеллекта ускоряет автоматизацию в науке и промышленности',
+                    source: 'Технологии и Наука',
+                    link: 'https://news.google.com/?hl=ru&gl=RU&ceid=RU:ru',
+                    timeAgo: '12 минут назад',
+                    related: [
+                        { title: 'Новые языковые модели показывают рекордную точность в анализе данных', source: 'Hi-Tech' }
+                    ]
+                },
+                {
+                    id: 1,
+                    title: 'Мировые рынки демонстрируют умеренный рост на фоне публикации макроэкономической статистики',
+                    source: 'Экономика Сегодня',
+                    link: 'https://news.google.com/?hl=ru&gl=RU&ceid=RU:ru',
+                    timeAgo: '28 минут назад',
+                    related: [
+                        { title: 'Аналитики обновили прогнозы по ключевым секторам на следующий квартал', source: 'Финансы' }
+                    ]
+                },
+                {
+                    id: 2,
+                    title: 'Международная космическая программа представила план запуска новых орбитальных обсерваторий',
+                    source: 'Космос и Исследования',
+                    link: 'https://news.google.com/?hl=ru&gl=RU&ceid=RU:ru',
+                    timeAgo: '45 минут назад',
+                    related: []
+                },
+                {
+                    id: 3,
+                    title: 'Крупные города расширяют сеть экологичного общественного транспорта и зарядных станций',
+                    source: 'Городская среда',
+                    link: 'https://news.google.com/?hl=ru&gl=RU&ceid=RU:ru',
+                    timeAgo: '1 час назад',
+                    related: []
+                }
+            ];
+        }
+
+        /**
+         * Генерация цветовых акцентов для разных источников
+         */
+        function getAccentGradient(index) {
+            const gradients = [
+                'from-blue-500/20 via-indigo-500/10 to-transparent border-blue-500/30',
+                'from-emerald-500/20 via-teal-500/10 to-transparent border-emerald-500/30',
+                'from-purple-500/20 via-pink-500/10 to-transparent border-purple-500/30',
+                'from-cyan-500/20 via-sky-500/10 to-transparent border-cyan-500/30',
+                'from-amber-500/20 via-orange-500/10 to-transparent border-amber-500/30'
+            ];
+            return gradients[index % gradients.length];
+        }
+
+        /**
+         * Отрисовка карточек новостей в DOM
+         */
+        function renderCards() {
+            cardsContainer.innerHTML = '';
+            dotsIndicator.innerHTML = '';
+
+            newsItems.forEach((item, idx) => {
+                const card = document.createElement('article');
+                card.className = `slide-card absolute inset-0 w-full h-full rounded-3xl bg-slate-900/90 backdrop-blur-xl border border-slate-800/90 shadow-2xl flex flex-col justify-between overflow-hidden ${idx === 0 ? 'slide-active' : 'slide-next'}`;
+                card.dataset.index = idx;
+
+                const accentClass = getAccentGradient(idx);
+
+                // Блок похожих новостей по теме (если есть в RSS)
+                const relatedHtml = item.related && item.related.length > 0
+                    ? `<div class="mt-4 pt-4 border-t border-slate-800/80 space-y-2">
+                        <p class="text-[11px] uppercase tracking-wider font-semibold text-slate-500">Также по теме:</p>
+                        ${item.related.map(rel => `
+                            <div class="flex items-start space-x-2 text-xs text-slate-300">
+                                <span class="text-blue-400 mt-0.5">•</span>
+                                <span class="line-clamp-1"><span class="text-slate-400">${escapeHtml(rel.title)}</span> ${rel.source ? `<span class="text-slate-500">— ${escapeHtml(rel.source)}</span>` : ''}</span>
+                            </div>
+                        `).join('')}
+                       </div>`
+                    : '';
+
+                card.innerHTML = `
+                    <!-- Верхняя градиентная подсветка карточки -->
+                    <div class="absolute inset-x-0 top-0 h-36 bg-gradient-to-b ${accentClass} pointer-events-none opacity-60"></div>
+
+                    <!-- Верхняя часть карточки: источник и время -->
+                    <div class="relative z-10 p-6 sm:p-8 pb-0 flex items-center justify-between gap-3">
+                        <div class="flex items-center space-x-2.5 min-w-0">
+                            <span class="inline-flex items-center px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/25 truncate">
+                                <i class="fa-solid fa-rss mr-2 text-[11px] text-blue-400"></i>
+                                ${escapeHtml(item.source)}
+                            </span>
+                        </div>
+                        <span class="text-xs sm:text-sm text-slate-400 whitespace-nowrap flex items-center">
+                            <i class="fa-regular fa-clock mr-1.5 text-slate-500"></i>
+                            ${escapeHtml(item.timeAgo)}
+                        </span>
+                    </div>
+
+                    <!-- Центральная часть: крупный заголовок новости -->
+                    <div class="relative z-10 px-6 sm:px-8 my-auto py-4 overflow-y-auto no-scrollbar">
+                        <div class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
+                            Новость #${idx + 1}
+                        </div>
+                        <h2 class="text-xl sm:text-2xl md:text-3xl font-bold text-white leading-snug sm:leading-tight tracking-tight">
+                            <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="hover:text-blue-400 transition-colors">
+                                ${escapeHtml(item.title)}
+                            </a>
+                        </h2>
+                        ${relatedHtml}
+                    </div>
+
+                    <!-- Нижняя часть карточки: кнопка перехода и полоска таймера 6 сек -->
+                    <div class="relative z-10 px-6 sm:px-8 pb-6 pt-3 flex items-center justify-between gap-4">
+                        <a href="${item.link}" target="_blank" rel="noopener noreferrer"
+                           class="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-semibold shadow-lg shadow-blue-600/25 transition-all active:scale-95">
+                            <span>Читать полностью</span>
+                            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                        </a>
+
+                        <div class="text-xs text-slate-500 hidden sm:flex items-center space-x-1.5">
+                            <i class="fa-solid fa-arrows-up-down text-slate-600"></i>
+                            <span>Листайте вертикально</span>
+                        </div>
+                    </div>
+
+                    <!-- Прогресс-бар 6-секундного таймера в самом низу карточки -->
+                    <div class="w-full h-1.5 bg-slate-800/90 relative overflow-hidden">
+                        <div class="progress-bar h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 w-0"></div>
+                    </div>
+                `;
+
+                cardsContainer.appendChild(card);
+
+                // Точка навигации справа
+                if (idx < 12) {
+                    const dot = document.createElement('button');
+                    dot.className = `w-2 rounded-full transition-all duration-300 ${idx === 0 ? 'h-6 bg-blue-500' : 'h-2 bg-slate-700 hover:bg-slate-500'}`;
+                    dot.title = `Перейти к новости ${idx + 1}`;
+                    dot.addEventListener('click', () => goToSlide(idx));
+                    dotsIndicator.appendChild(dot);
+                }
+            });
+
+            totalCountEl.textContent = newsItems.length;
+            updateSlideClasses();
+        }
+
+        /**
+         * Экранирование HTML-символов для безопасности
+         */
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        /**
+         * Обновление CSS-классов карточек при смене текущего слайда
+         */
+        function updateSlideClasses() {
+            const cards = cardsContainer.querySelectorAll('.slide-card');
+            const total = cards.length;
+
+            cards.forEach((card, idx) => {
+                card.classList.remove('slide-active', 'slide-prev', 'slide-next', 'slide-hidden');
+                const bar = card.querySelector('.progress-bar');
+
+                if (idx === currentIndex) {
+                    card.classList.add('slide-active');
+                } else if (idx === (currentIndex - 1 + total) % total) {
+                    card.classList.add('slide-prev');
+                    if (bar) bar.style.width = '0%';
+                } else if (idx === (currentIndex + 1) % total) {
+                    card.classList.add('slide-next');
+                    if (bar) bar.style.width = '0%';
+                } else {
+                    card.classList.add('slide-hidden');
+                    if (bar) bar.style.width = '0%';
+                }
+            });
+
+            // Обновление счетчика
+            currentIndexEl.textContent = currentIndex + 1;
+
+            // Обновление точек индикации
+            const dots = dotsIndicator.querySelectorAll('button');
+            dots.forEach((dot, idx) => {
+                if (idx === currentIndex % dots.length) {
+                    dot.className = 'w-2 h-6 rounded-full bg-blue-500 transition-all duration-300';
+                } else {
+                    dot.className = 'w-2 h-2 rounded-full bg-slate-700 hover:bg-slate-500 transition-all duration-300';
+                }
+            });
+        }
+
+        /**
+         * Переход к конкретному слайду и сброс 6-секундного таймера
+         */
+        function goToSlide(index) {
+            if (newsItems.length === 0) return;
+            const total = newsItems.length;
+            currentIndex = (index + total) % total;
+            elapsedBeforePause = 0;
+            progressStartTime = performance.now();
+            updateSlideClasses();
+        }
+
+        function nextSlide() {
+            goToSlide(currentIndex + 1);
+        }
+
+        function prevSlide() {
+            goToSlide(currentIndex - 1);
+        }
+
+        /**
+         * Цикл анимации прогресс-бара и переключения каждые 6 секунд
+         */
+        function startTimerLoop() {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            progressStartTime = performance.now();
+
+            function tick(now) {
+                if (!isPaused && !isHovering && newsItems.length > 1) {
+                    const elapsed = elapsedBeforePause + (now - progressStartTime);
+                    const progressPercent = Math.min((elapsed / SLIDE_DURATION_MS) * 100, 100);
+
+                    const activeCard = cardsContainer.querySelector('.slide-active');
+                    if (activeCard) {
+                        const bar = activeCard.querySelector('.progress-bar');
+                        if (bar) bar.style.width = `${progressPercent}%`;
+                    }
+
+                    if (elapsed >= SLIDE_DURATION_MS) {
+                        nextSlide();
+                    }
+                } else {
+                    progressStartTime = now;
+                }
+
+                animationFrameId = requestAnimationFrame(tick);
+            }
+
+            animationFrameId = requestAnimationFrame(tick);
+        }
+
+        /**
+         * Управление паузой / воспроизведением
+         */
+        function togglePlayPause() {
+            isPaused = !isPaused;
+            if (isPaused) {
+                playPauseIcon.className = 'fa-solid fa-play text-xs sm:text-sm text-emerald-400';
+                showToast('Автоперелистывание на паузе');
+            } else {
+                playPauseIcon.className = 'fa-solid fa-pause text-xs sm:text-sm';
+                progressStartTime = performance.now();
+                showToast('Автоперелистывание возобновлено');
+            }
+        }
+
+        // Сохранение накопленного прогресса при паузе или наведении
+        function pauseProgressTracking() {
+            if (progressStartTime !== null) {
+                elapsedBeforePause += performance.now() - progressStartTime;
+                progressStartTime = performance.now();
+            }
+        }
+
+        function resumeProgressTracking() {
+            progressStartTime = performance.now();
+        }
+
+        /**
+         * Инициализация и обновление данных
+         */
+        async function initApp(isManualRefresh = false) {
+            if (isManualRefresh) {
+                refreshIcon.classList.add('animate-spin');
+            }
+
+            const items = await fetchGoogleNewsRSS();
+            newsItems = items;
+            currentIndex = 0;
+            elapsedBeforePause = 0;
+
+            loaderEl.classList.add('hidden');
+            cardsContainer.classList.remove('hidden');
+            sideControls.classList.remove('hidden');
+
+            renderCards();
+            startTimerLoop();
+
+            if (isManualRefresh) {
+                setTimeout(() => refreshIcon.classList.remove('animate-spin'), 500);
+                showToast(`Загружено ${newsItems.length} свежих новостей`);
+            }
+        }
+
+        // Обработчики событий кнопок
+        document.getElementById('prev-btn').addEventListener('click', prevSlide);
+        document.getElementById('next-btn').addEventListener('click', nextSlide);
+        document.getElementById('mobile-prev-btn').addEventListener('click', prevSlide);
+        document.getElementById('mobile-next-btn').addEventListener('click', nextSlide);
+        togglePlayBtn.addEventListener('click', () => {
+            if (!isPaused) pauseProgressTracking();
+            togglePlayPause();
+        });
+        refreshBtn.addEventListener('click', () => initApp(true));
+
+        // Пауза при наведении курсора на карточку, чтобы удобно читать
+        cardsContainer.addEventListener('mouseenter', () => {
+            isHovering = true;
+            pauseProgressTracking();
+        });
+        cardsContainer.addEventListener('mouseleave', () => {
+            isHovering = false;
+            resumeProgressTracking();
+        });
+
+        // Навигация с клавиатуры (стрелки Вверх / Вниз / Пробел)
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.code === 'Space') {
+                e.preventDefault();
+                if (!isPaused) pauseProgressTracking();
+                togglePlayPause();
+            }
+        });
+
+        // Навигация колесиком мыши
+        window.addEventListener('wheel', (e) => {
+            if (wheelLock || Math.abs(e.deltaY) < 25) return;
+            wheelLock = true;
+            if (e.deltaY > 0) {
+                nextSlide();
+            } else {
+                prevSlide();
+            }
+            setTimeout(() => { wheelLock = false; }, 550);
+        }, { passive: true });
+
+        // Поддержка вертикальных свайпов на сенсорных экранах
+        cardsContainer.addEventListener('touchstart', (e) => {
+            touchStartY = e.touches[0].clientY;
+            isHovering = true;
+            pauseProgressTracking();
+        }, { passive: true });
+
+        cardsContainer.addEventListener('touchend', (e) => {
+            const touchEndY = e.changedTouches[0].clientY;
+            const deltaY = touchStartY - touchEndY;
+            isHovering = false;
+            resumeProgressTracking();
+
+            if (Math.abs(deltaY) > 45) {
+                if (deltaY > 0) {
+                    nextSlide(); // Свайп вверх -> следующая новость
+                } else {
+                    prevSlide(); // Свайп вниз -> предыдущая новость
+                }
+            }
+        }, { passive: true });
+
+        // Запуск при загрузке страницы
+        window.addEventListener('DOMContentLoaded', () => initApp(false));
+    </script>
+</body>
+</html>
